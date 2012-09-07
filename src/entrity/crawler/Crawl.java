@@ -27,7 +27,7 @@ public class Crawl {
 		Crawl.firstAddress = firstAddress;
 		URL url = new URL(firstAddress);
 		Crawl.host = url.getHost();
-		Crawl.conn = DriverManager.getConnection("jdbc:mysql://localhost/crawls?user=root&password=pwd1234");
+		Crawl.conn = Database.connect();
 		Crawl.client = new DefaultHttpClient();
 		// write to db
 		save();

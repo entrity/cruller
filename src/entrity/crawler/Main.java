@@ -6,19 +6,18 @@ import java.sql.*;
 public class Main {
 
 	public static void main(String[] args) {
-		test();
-//		run(args);
+		if (args.length > 0) {
+			if (args[0].equals("init"))
+				initialize();
+		} else {			
+			test();
+//			run(args);
+		}
 	}
 	
 	private static void test() {
 		try {
-			java.net.URL url  = new java.net.URL("http://manderson:clumanderson@www.trustedquote.com/foo/bar.html?k=v#fragthing");
-			java.net.URL url2 = new java.net.URL("http://www.trustedquote.com/foo/bar.html?k=v");
-			java.net.URL url3 = new java.net.URL("http://www.trustedquote.com/foo/bar.html#fragthing");
-			java.net.URL url4 = new java.net.URL("http://www.trustedquote.com/foo/bar.html");
-			java.net.URI uri = new java.net.URI(url.getProtocol(), url.getUserInfo(), url.getHost(), url.getPort(), url.getPath(), url.getQuery(), null);
-			System.out.println(url);
-			System.out.println(uri.toURL());
+			
 		} catch (Exception ex) {
 			ex.printStackTrace();
 		}
@@ -32,6 +31,14 @@ public class Main {
 			ex.printStackTrace();
 		} catch (MalformedURLException ex) {
 			ex.printStackTrace();
+		}
+	}
+	
+	private static void initialize() {
+		try {
+			Database.createTables();
+		} catch (SQLException e) {
+			e.printStackTrace();
 		}
 	}
 

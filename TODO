@@ -1,0 +1,4 @@
+- handle redirects
+- create tables
+- log anchors
+- xml parse db config file (for creating connection)
