@@ -5,7 +5,6 @@ import java.net.URISyntaxException;
 import java.net.URL;
 import java.sql.Connection;
 import java.sql.Date;
-import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.Statement;
@@ -104,11 +103,11 @@ class CrawlTask implements Runnable {
 			Crawl.queued += 1;
 		}
 		try {
-			System.out.printf("=============fetching head: %s%n", address);
-			Head head = Head.fetch(address);
-			System.out.printf("merits crawl %s%n", head.meritsCrawl());
+			Head head = Head.fetchIfNew(address);
 			if (head.meritsCrawl()) {
+				System.out.printf("           =====fetching body %s%n", head.meritsCrawl());
 				Body body = head.fetchBody();
+				body.crawlDocument();
 			}
 		} catch (Exception ex) {
 			ex.printStackTrace();

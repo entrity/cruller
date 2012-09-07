@@ -9,9 +9,9 @@ public class Main {
 		if (args.length > 0) {
 			if (args[0].equals("init"))
 				initialize();
-		} else {			
-			test();
-//			run(args);
+			else {
+				run(args);
+			}
 		}
 	}
 	
@@ -24,8 +24,9 @@ public class Main {
 	}
 	
 	private static void run(String[] args) {
-		String firstAddress = "http://www.trustedquote.com";
+		String firstAddress = args[0];
 		try {
+			System.out.printf("starting crawl for %s...%n", firstAddress);
 			Crawl.run(firstAddress);
 		} catch (SQLException ex) {
 			ex.printStackTrace();
