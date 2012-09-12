@@ -29,24 +29,22 @@ public class Head {
 	String contentType;
 	static final java.util.regex.Pattern CONTENT_TYPE_PATTERN = Pattern.compile("text/html");
 	
-	/* Returns a Head object for the given address. If no matching head is found in database, execute fetch. */
-	public static Head fetchIfNew(String address) throws ClientProtocolException, IOException, SQLException {
-		Head head;
+	/* Adds new head to db, returns same if address has yet to be crawled; else returns null */
+	public static Head addtoDbIfNew(String address) throws SQLException {
+		Head head = null;
 		/* Check whether this head needs crawling */
 		synchronized(Crawl.conn) {
 			if (needsRequest(address)) { // check whether this URL has already been crawled
 				head = new Head(address);
 				head.dbInsert(); // create in db immediately so that this head crawl won't be duplicated (in the time it takes to complete this head crawl)
-			} else
-				return null;
+			}
 		}
-		System.out.printf("=============fetching head: %s%n", address);
-		head.fetch();
 		return head;
 	}
 
 	/* Execute HTTP HEAD request for address. Collect content-type, status-code, etc. Save to database. */
 	public void fetch() throws ClientProtocolException, IOException, SQLException {
+		System.out.printf("=============fetching head: %s%n", address);
 		/* Http request & response */
 		HttpClient client = new DefaultHttpClient();
 		HttpResponse response = client.execute(new HttpHead(address));

@@ -58,7 +58,7 @@ public class Body {
 	 * Parse the HTTP response's body text.
 	 * Find hyperlinks and save them to database.
 	 */
-	public void crawlDocument() throws SQLException {
+	public void crawlDocument() throws SQLException, MalformedURLException {
 		// Get links' hrefs
 		Elements links = doc.select("a[href]");
 		Iterator<Element> iterator = links.iterator();
@@ -66,9 +66,13 @@ public class Body {
 			Element link = iterator.next();
 			Anchor anchor = Anchor.create(link, head);
 			try {
+				// add url to queue if not javascript or mailto
+				if (anchor.href.startsWith("javascript:") || anchor.href.startsWith("mailto:"))
+					return;
 				Crawl.addAddress(resolveUrl(anchor.href));
 			} catch (MalformedURLException ex) {
-				ex.printStackTrace();
+				String msg = String.format("Could not add address {%s} from body {%s} to Crawl", anchor.href, address);
+				throw new MalformedURLException(msg);
 			}
 		}
 	}

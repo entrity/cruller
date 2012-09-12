@@ -1,11 +1,11 @@
 /**
  * Usage:
  * Run a crawl by supplying the first url
- * 	java [thisjarfile].jar [first url]
+ * 	java -jar [thisjar] [first url]
  * 	(todo) --ignore-offsite			don't even make head requests for offsite resources
  * 	(todo) --greater-domain			also crawl linked subdomains as though they were one site
  * Create tables in database
- *  java [thisjar] init [db name] -h [host] -u [username] -p [password] -P [port]
+ *  java -jar [thisjar] init
  * 
  */
 
@@ -49,7 +49,6 @@ public class Main {
 	private static void run(String[] args) {
 		for (int i=0; i < args.length; i++) {
 			String arg = args[i];
-			System.out.printf("%d %s", i, arg);
 			Crawl.firstAddress = arg;
 		}		
 		try {
@@ -63,22 +62,6 @@ public class Main {
 	}
 	
 	private static void initialize(String[] args) {
-		for (int i=1; i < args.length; i ++) {
-			if (args[i].charAt(0) == '-') {
-				switch(args[i].charAt(1)) {
-				case 'h':
-					Database.host = args[++i]; break;
-				case 'p':
-					Database.password = args[++i]; break;
-				case 'P':
-					Database.port = args[++i]; break;
-				case 'u':
-					Database.user = args[++i]; break;
-				}
-			} else {
-				Database.database = args[i];
-			}
-		}
 		try {
 			Database.createTables();
 		} catch (SQLException e) {

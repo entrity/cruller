@@ -1,5 +1,6 @@
 package entrity.crawler;
 
+import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URISyntaxException;
 import java.net.URL;
@@ -10,7 +11,6 @@ import java.sql.ResultSet;
 import java.sql.Statement;
 import java.sql.SQLException;
 import java.util.concurrent.*;
-
 import org.apache.http.client.HttpClient;
 import org.apache.http.impl.client.DefaultHttpClient;
 
@@ -102,14 +102,22 @@ class CrawlTask implements Runnable {
 			Crawl.queued += 1;
 		}
 		try {
-			Head head = Head.fetchIfNew(address);
-			if (head != null && head.meritsCrawl()) {
-				Body body = head.fetchBody();
-				body.crawlDocument();
+			Head head = Head.addtoDbIfNew(address);
+			if (head != null) {
+				head.fetch();
+				try {
+					if (head.meritsCrawl()) {
+						Body body = head.fetchBody();
+						body.crawlDocument();
+					}
+				} catch (MalformedURLException ex) {
+					System.err.printf("MalformedURLException for %s%n%s%n", head.address, ex.getMessage());
+					ex.printStackTrace();
+				}
 			}
 		} catch (javax.net.ssl.SSLException ex) {
 			System.err.printf("SSLException for %s%n", address);
-		} catch (Exception ex) {
+		} catch (IOException | SQLException ex) {
 			ex.printStackTrace();
 		}
 		synchronized(this) {

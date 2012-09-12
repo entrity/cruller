@@ -1,1 +1,2 @@
 - handle redirects
+- enable SNI SSL authentication
