@@ -22,8 +22,7 @@ public class Crawl {
 	static int id, queued, completed;
 	static ExecutorService threadPool; // Thread manager
 	
-	public static void run(String firstAddress) throws SQLException, MalformedURLException {
-		Crawl.firstAddress = firstAddress;
+	public static void run() throws SQLException, MalformedURLException {
 		URL url = new URL(firstAddress);
 		Crawl.host = url.getHost();
 		Crawl.conn = Database.connect();
@@ -104,11 +103,12 @@ class CrawlTask implements Runnable {
 		}
 		try {
 			Head head = Head.fetchIfNew(address);
-			if (head.meritsCrawl()) {
-				System.out.printf("           =====fetching body %s%n", head.meritsCrawl());
+			if (head != null && head.meritsCrawl()) {
 				Body body = head.fetchBody();
 				body.crawlDocument();
 			}
+		} catch (javax.net.ssl.SSLException ex) {
+			System.err.printf("SSLException for %s%n", address);
 		} catch (Exception ex) {
 			ex.printStackTrace();
 		}

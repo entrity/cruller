@@ -31,15 +31,16 @@ public class Head {
 	
 	/* Returns a Head object for the given address. If no matching head is found in database, execute fetch. */
 	public static Head fetchIfNew(String address) throws ClientProtocolException, IOException, SQLException {
-		System.out.printf("=============fetching head: %s%n", address);
-		Head head = new Head(address);
+		Head head;
 		/* Check whether this head needs crawling */
 		synchronized(Crawl.conn) {
-			if (head.needsRequest()) // check whether this URL has already been crawled
+			if (needsRequest(address)) { // check whether this URL has already been crawled
+				head = new Head(address);
 				head.dbInsert(); // create in db immediately so that this head crawl won't be duplicated (in the time it takes to complete this head crawl)
-			else
-				return head;
+			} else
+				return null;
 		}
+		System.out.printf("=============fetching head: %s%n", address);
 		head.fetch();
 		return head;
 	}
@@ -84,13 +85,17 @@ public class Head {
 		ps.executeUpdate();
 	}
 	
-	/* Search db for a Head matching this' address */
-	public boolean needsRequest() throws SQLException {
+	public static boolean needsRequest(String address) throws SQLException {
 		PreparedStatement ps = Crawl.conn.prepareStatement("SELECT id FROM heads WHERE crawl_id = ? AND address = ?");
 		ps.setInt(1, Crawl.id);
 		ps.setString(2, address);
 		ResultSet results = ps.executeQuery();
 		return !results.next();
+	}
+	
+	/* Search db for a Head matching this' address */
+	public boolean needsRequest() throws SQLException {
+		return Head.needsRequest(address);
 	}
 	
 	/* Content type == text/html and status == 200 */

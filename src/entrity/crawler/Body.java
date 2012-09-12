@@ -35,6 +35,7 @@ public class Body {
 	
 	static public Body fetch(String address, Head head) throws ClientProtocolException, IOException, SQLException {
 		Body body = new Body(address, head);
+		System.out.printf("           =====fetching body %s%n", address);
 		HttpClient client = new DefaultHttpClient();
 		HttpResponse response = client.execute(new HttpGet(address));
 		HttpEntity entity = response.getEntity();
