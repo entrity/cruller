@@ -1,36 +1,16 @@
 package entrity.crawler;
 
-import java.io.File;
 import java.io.IOException;
 import java.sql.*;
 
-import org.jsoup.Jsoup;
-import org.jsoup.nodes.Document;
-
 public abstract class Database {
-	
-	static String host;
-	static String port;
-	static String database;
-	static String user;
-	static String password;
-	
-	/* Open config file and get params for mysql connection */
-	private static void getConfig() throws IOException {
-		File input = new File("config.xml");
-		Document doc = Jsoup.parse(input, "UTF-8");
-		host = doc.select("host").first().text();
-		port = doc.select("port").first().text();
-		database = doc.select("database").first().text();
-		user = doc.select("user").first().text();
-		password = doc.select("password").first().text();		
-	}
 	
 	public static Connection connect() throws SQLException {
 		try {
-			getConfig();
+			Config.read();
 		} catch (IOException ex) {}
-		String address = String.format("jdbc:mysql://%s:%s/%s?user=%s&password=%s", host, port, database, user, password);
+		String address = String.format("jdbc:mysql://%s:%s/%s?user=%s&password=%s", 
+				Config.host, Config.port, Config.database, Config.user, Config.password);
 		return DriverManager.getConnection(address);
 	}
 	

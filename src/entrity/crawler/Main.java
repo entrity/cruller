@@ -12,6 +12,7 @@
 
 package entrity.crawler;
 
+import java.io.IOException;
 import java.net.MalformedURLException;
 import java.sql.*;
 import org.apache.http.*;
@@ -22,6 +23,8 @@ import org.apache.http.impl.client.DefaultHttpClient;
 public class Main {
 
 	public static void main(String[] args) {
+//		test(args);
+//		if (true) return;
 		// check command
 		if (args.length == 0) {
 			System.out.println("Supply a url to request or a command to execute.");
@@ -38,9 +41,11 @@ public class Main {
 	
 	private static void test(String[] args) {
 		try {
-			HttpClient client = new DefaultHttpClient();
-			HttpResponse response = client.execute(new HttpHead("https://www.trustedquote.com/life-insurance-quotes"));
-			System.out.println(response);
+//			HttpClient client = new DefaultHttpClient();
+//			HttpResponse response = client.execute(new HttpHead("https://www.trustedquote.com/life-insurance-quotes"));
+//			System.out.println(response);
+			Config.read();
+			System.out.println(Config.maxThreads);
 		} catch (Exception ex) {
 			ex.printStackTrace();
 		}
@@ -52,11 +57,14 @@ public class Main {
 			Crawl.firstAddress = arg;
 		}		
 		try {
-			System.out.printf("starting crawl for %s...%n", Crawl.firstAddress);
+			Config.read();
+			System.out.printf("Starting crawl w/ %d threads on %s%n", Config.maxThreads, Crawl.firstAddress);
 			Crawl.run();
 		} catch (SQLException ex) {
 			ex.printStackTrace();
 		} catch (MalformedURLException ex) {
+			ex.printStackTrace();
+		} catch (IOException ex) {
 			ex.printStackTrace();
 		}
 	}

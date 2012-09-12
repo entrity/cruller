@@ -30,7 +30,7 @@ public class Crawl {
 		// write to db
 		save();
 		// create thread manager
-		threadPool = java.util.concurrent.Executors.newFixedThreadPool(3);
+		threadPool = java.util.concurrent.Executors.newFixedThreadPool(Config.maxThreads);
 		// invoke first thread
 		threadPool.execute(new CrawlTask(firstAddress));
 	}

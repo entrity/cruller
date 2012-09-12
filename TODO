@@ -1,2 +1,3 @@
 - handle redirects
 - enable SNI SSL authentication
+- make crawl work even if threads set at 1

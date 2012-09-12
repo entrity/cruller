@@ -1,7 +1,6 @@
-<mysql>
-	<host>localhost</host>
-	<port>3306</port>
-	<database>crawls</database>
-	<user>root</user>
-	<password>pwd1234</password>
-</mysql>
+<host>localhost</host>
+<port>3306</port>
+<database>crawls</database>
+<user>root</user>
+<password>pwd1234</password>
+<threads>30</threads>
