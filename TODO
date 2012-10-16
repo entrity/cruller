@@ -1,3 +1,12 @@
 - handle redirects
 - enable SNI SSL authentication
 - make crawl work even if threads set at 1
+- make crawler output to rolling log files (as set in config.xml)
+- option for 'silent' to nix stdout messages
+- log errors
+- handle server didn't respond error by executing a second request
+
+- provide config option to not request heads for 3rd party URLs
+- method to attach protocol (http) where none given in first_address
+- autocreate config template when no config file found
+- grab urls from every DOM element with src or href attr (iframe, script, stylesheet, img...)

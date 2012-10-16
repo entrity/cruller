@@ -16,18 +16,27 @@ public class Anchor {
 		this.head = head;
 	}
 	
-	public static Anchor create(org.jsoup.nodes.Element link, Head head) throws SQLException {
+	public static Anchor create(org.jsoup.nodes.Element link, Head head) {
 		Anchor anchor = new Anchor(link, head);
 		anchor.dbInsert();
 		return anchor;
 	}
 	
 	/* Create record in db */	
-	public void dbInsert() throws SQLException {
-		PreparedStatement ps = Crawl.conn.prepareStatement("INSERT INTO anchors (head_id, href, text) VALUES (?, ?, ?)");
-		ps.setInt(1, head.id);
-		ps.setString(2, href);
-		ps.setString(3, text);
-		ps.executeUpdate();		
+	public void dbInsert() {
+		PreparedStatement ps = null;
+		try {
+			ps = head.crawl.conn.prepareStatement("INSERT INTO anchors (head_id, href, text) VALUES (?, ?, ?)");
+			ps.setInt(1, head.id);
+			ps.setString(2, href);
+			ps.setString(3, text);
+			ps.executeUpdate();
+		} catch (SQLException ex) {
+			if (ex.getErrorCode() == 1406)
+				System.err.println(ps.toString());
+			ex.printStackTrace();
+		} finally {
+			Helpers.cleanup(ps, null);
+		}
 	}
 }

@@ -3,4 +3,4 @@
 <database>crawls</database>
 <user>root</user>
 <password>pwd1234</password>
-<threads>30</threads>
+<threads>20</threads>

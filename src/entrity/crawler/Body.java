@@ -6,7 +6,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.sql.SQLException;
 import java.util.Iterator;
 
 import org.apache.http.client.ClientProtocolException;
@@ -33,9 +32,8 @@ public class Body {
 	Head head;
 	Document doc;
 	
-	static public Body fetch(String address, Head head) throws ClientProtocolException, IOException, SQLException {
+	static public Body fetch(String address, Head head) throws ClientProtocolException, IOException {
 		Body body = new Body(address, head);
-		System.out.printf("           =====fetching body %s%n", address);
 		HttpClient client = new DefaultHttpClient();
 		HttpResponse response = client.execute(new HttpGet(address));
 		HttpEntity entity = response.getEntity();
@@ -58,7 +56,7 @@ public class Body {
 	 * Parse the HTTP response's body text.
 	 * Find hyperlinks and save them to database.
 	 */
-	public void crawlDocument() throws SQLException, MalformedURLException {
+	public void crawlDocument() throws MalformedURLException {
 		// Get links' hrefs
 		Elements links = doc.select("a[href]");
 		Iterator<Element> iterator = links.iterator();
@@ -69,11 +67,34 @@ public class Body {
 				// add url to queue if not javascript or mailto
 				if (anchor.href.startsWith("javascript:") || anchor.href.startsWith("mailto:"))
 					return;
-				Crawl.addAddress(resolveUrl(anchor.href));
+				addAddress( resolveUrl(anchor.href) );
 			} catch (MalformedURLException ex) {
 				String msg = String.format("Could not add address {%s} from body {%s} to Crawl", anchor.href, address);
 				throw new MalformedURLException(msg);
 			}
+		}
+	}
+	
+	/* 
+	 * Unless address is already in db, adds address to db & increments
+	 * crawl.queued. (Removes #fragment from given URL)
+	 */
+	public void addAddress(URL url) {
+		boolean added = false;
+		// remove fragment because we don't want to crawl the same page twice
+		String address = Helpers.removeUrlFragment(url).toString();		
+		synchronized(head.crawl.conn) {
+			// check Heads in db for url
+			if (!Head.inDb(head.crawl, address)) {
+				// create Head for url in db
+				Head newhead = new Head(head.crawl, address);
+				newhead.dbInsert();
+				added = true;
+			}
+		}
+		// increment crawl.queued
+		if (added) {
+			synchronized(this) { head.crawl.queued += 1; }
 		}
 	}
 	

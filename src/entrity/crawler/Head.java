@@ -18,33 +18,79 @@ import org.apache.http.client.methods.HttpHead;
 import org.apache.http.impl.client.DefaultHttpClient;
 
 public class Head {
-	public Head(String address) {
+	/* Constructor */
+	public Head(Crawl crawl, String address) {
+		this.crawl = crawl;
 		this.address = address;
 	}
+	/* Constructor. (ResultSet should already have next() called on it.) */
+	public Head(Crawl crawl, ResultSet result) throws SQLException {
+		this.crawl = crawl;
+		this.id = result.getInt("id");
+		this.address = result.getString(COLNAME_ADDRESS);
+	}
 	
+	
+	final Crawl crawl;
 	String address;
-	Crawl crawl;
-	int status = 0;
+	int status = UNCLAIMED;
 	int id = 0;
 	String contentType;
 	static final java.util.regex.Pattern CONTENT_TYPE_PATTERN = Pattern.compile("text/html");
+	public static final int UNCLAIMED = -1;
+	public static final int CLAIMED = 0;
+	public static final String COLNAME_ADDRESS = "address";
 	
-	/* Adds new head to db, returns same if address has yet to be crawled; else returns null */
-	public static Head addtoDbIfNew(String address) throws SQLException {
+	/* Synchronized against connection. Claims a Head in the db. Returns same. */
+	public static Head fetchUnclaimed(Crawl crawl) {
 		Head head = null;
-		/* Check whether this head needs crawling */
-		synchronized(Crawl.conn) {
-			if (needsRequest(address)) { // check whether this URL has already been crawled
-				head = new Head(address);
-				head.dbInsert(); // create in db immediately so that this head crawl won't be duplicated (in the time it takes to complete this head crawl)
+		synchronized(crawl.conn) {
+			// select unclaimed head
+			PreparedStatement ps = null;
+			ResultSet results = null;
+			try {
+				ps = crawl.conn.prepareStatement("SELECT * FROM heads WHERE crawl_id = ? AND status = ? LIMIT 1");
+				ps.setInt(1, crawl.id);
+				ps.setInt(2, UNCLAIMED);
+				results = ps.executeQuery();
+				if (results.next()) {
+					// claim head
+					head = new Head(crawl, results);
+					head.status = CLAIMED;
+					head.dbUpdate();
+				}
+			} catch (SQLException ex) {
+				ex.printStackTrace();
+			} finally {
+				Helpers.cleanup(ps, results);
 			}
 		}
 		return head;
 	}
+	
+	/* Counts unclaimed Heads in db belonging to given crawl */
+	public static int countUnclaimed(Crawl crawl) {
+		int count = -1;
+		PreparedStatement ps = null;
+		ResultSet results = null;
+		try {
+			ps = crawl.conn.prepareStatement("SELECT count(*) FROM heads WHERE crawl_id = ? AND status = ? LIMIT 1");
+			ps.setInt(1, crawl.id);
+			ps.setInt(2, UNCLAIMED);
+			results = ps.executeQuery();
+			results.next();
+			count = results.getInt(1);	
+		} catch (SQLException ex) {
+			ex.printStackTrace();
+		} finally {
+			Helpers.cleanup(ps, results);
+		}
+		return count;
+	}
 
 	/* Execute HTTP HEAD request for address. Collect content-type, status-code, etc. Save to database. */
-	public void fetch() throws ClientProtocolException, IOException, SQLException {
-		System.out.printf("=============fetching head: %s%n", address);
+	public void fetch() throws ClientProtocolException, IOException {
+		System.out.printf("tasks: %2d ... queued: %5d ... completed: %5d %n", crawl.tasks, crawl.queued, crawl.completed);
 		/* Http request & response */
 		HttpClient client = new DefaultHttpClient();
 		HttpResponse response = client.execute(new HttpHead(address));
@@ -57,50 +103,99 @@ public class Head {
 	}
 	
 	/* Run GET request for this' address. Return Body. This does not save the Body to database. This does not parse the body text. */
-	public Body fetchBody() throws ClientProtocolException, IOException, SQLException {
+	public Body fetchBody() throws ClientProtocolException, IOException {
 		return Body.fetch(address, this);
 	}
 	
 	/* Create record in db */
-	public void dbInsert() throws SQLException {
-		PreparedStatement ps;
-		ps = Crawl.conn.prepareStatement("INSERT INTO heads (crawl_id, status, address) VALUES (?, 0, ?)", Statement.RETURN_GENERATED_KEYS);
-		ps.setInt(1, Crawl.id);
-		ps.setString(2, address);
-		ps.executeUpdate();
-		ResultSet results = ps.getGeneratedKeys();
-		results.next();
-		id = results.getInt(1);
+	public void dbInsert() {
+		PreparedStatement ps = null;
+		ResultSet results = null;
+		try {
+			ps = crawl.conn.prepareStatement("INSERT INTO heads (crawl_id, status, address) VALUES (?, ?, ?)", Statement.RETURN_GENERATED_KEYS);
+			ps.setInt(1, crawl.id);
+			ps.setInt(2, status);
+			ps.setString(3, address);
+			ps.executeUpdate();
+			results = ps.getGeneratedKeys();
+			results.next();
+			id = results.getInt(1);
+		} catch (SQLException ex) {
+			if (ex.getErrorCode() == 1406)
+				System.err.println(ps.toString());
+			ex.printStackTrace();
+		} finally {
+			Helpers.cleanup(ps, results);
+		}
 	}
 	
 	/* Update status, content type in db */
-	public void dbUpdate() throws SQLException {
-		PreparedStatement ps;
-		ps = Crawl.conn.prepareStatement("UPDATE heads SET content_type = ?, status = ? WHERE id = ?");
-		ps.setString(1, contentType);
-		ps.setInt(2, status);
-		ps.setInt(3, id);
-		ps.executeUpdate();
+	public void dbUpdate() {
+		PreparedStatement ps = null;
+		try {
+			ps = crawl.conn.prepareStatement("UPDATE heads SET content_type = ?, status = ? WHERE id = ?");
+			ps.setString(1, contentType);
+			ps.setInt(2, status);
+			ps.setInt(3, id);
+			ps.executeUpdate();
+		} catch (SQLException ex) {
+			ex.printStackTrace();
+		} finally {
+			Helpers.cleanup(ps, null);
+		}
 	}
 	
-	public static boolean needsRequest(String address) throws SQLException {
-		PreparedStatement ps = Crawl.conn.prepareStatement("SELECT id FROM heads WHERE crawl_id = ? AND address = ?");
-		ps.setInt(1, Crawl.id);
-		ps.setString(2, address);
-		ResultSet results = ps.executeQuery();
-		return !results.next();
+	/* Returns true if given string represents a Head (for this crawl) in db */
+	public static boolean inDb(Crawl crawl, String address) {
+		boolean success = false;
+		PreparedStatement ps = null;
+		try {
+			ps = crawl.conn.prepareStatement("SELECT id, status FROM heads WHERE crawl_id = ? AND address = ? limit 1");
+			ps.setInt(1, crawl.id);
+			ps.setString(2, address);
+			ResultSet results = ps.executeQuery();
+			success = results.next();
+		} catch (SQLException ex) {
+			ex.printStackTrace();
+		} finally {
+			Helpers.cleanup(ps, null);
+		}
+		return success;
 	}
-	
-	/* Search db for a Head matching this' address */
-	public boolean needsRequest() throws SQLException {
-		return Head.needsRequest(address);
+
+	/* Returns int signifying status of given Head:
+	 * -1 : Head is in db but has not been requested or claimed by a crawl task
+	 * 0 : Head  is claimed by a crawl task
+	 * > 0 : Http response code for head request
+	 * SQLException is raised if given address is not in db
+	 * */
+	public static int statusOf(Crawl crawl, String address) {
+		int id = -1;
+		int status = -2;
+		PreparedStatement ps = null;
+		ResultSet results = null;
+		try {
+			ps = crawl.conn.prepareStatement("SELECT id, status FROM heads WHERE crawl_id = ? AND address = ? limit 1");
+			ps.setInt(1, crawl.id);
+			ps.setString(2, address);
+			results = ps.executeQuery();
+			results.next();
+			id = results.getInt(1);
+			status = results.getInt(2);
+		} catch (SQLException ex) {
+			ex.printStackTrace();
+		} finally {
+			Helpers.cleanup(ps, results);
+		}
+		System.out.printf("result of statusOf: %d - %d%n", id, status);
+		return status; 
 	}
 	
 	/* Content type == text/html and status == 200 */
 	public boolean meritsCrawl() throws MalformedURLException {
 		if (status >= 300 || status < 200)
 			return false;
-		if (!Crawl.hostMatch(address))
+		if (!crawl.hostMatch(address))
 			return false;
 		java.util.regex.Matcher matcher = CONTENT_TYPE_PATTERN.matcher(contentType);
 		return matcher.find();

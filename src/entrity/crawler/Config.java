@@ -20,7 +20,7 @@ public abstract class Config {
 	/* Open config file and get params for mysql connection */
 	public static void read() throws IOException {
 		ConfigReader.read();
-	}	
+	}
 	
 }
 
@@ -34,6 +34,8 @@ class ConfigReader {
 	
 	public ConfigReader() throws IOException {
 		File input = new File("config.xml");
+		if (!input.exists())
+			input = new File("crawler/config.xml");
 		doc = Jsoup.parse(input, "UTF-8");
 		Config.host = get("host"); 
 		Config.port = get("port");
